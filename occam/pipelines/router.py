@@ -20,13 +20,30 @@ from __future__ import annotations
 
 import time
 
-from occam.agents.plan import execute, rule_plan
+from occam.agents.plan import PlanResult, execute, rule_plan
 from occam.llm import LLM
 from occam.pipelines import agentic
 from occam.pipelines.base import PipelineResult, Step, timed
 from occam.pipelines.graphrag import _ACTION_FOR, plan_step
 from occam.store.local import EventGraph
 from occam.store.vectors import HybridIndex
+
+
+def _resolve(question: str, out: PlanResult, answer_field: str, g: EventGraph,
+             llm: LLM, res: PipelineResult) -> PlanResult | None:
+    """Apply the question's own constraint to a shortlist the graph returned."""
+    ds = Step("disambiguator", "llm_disambiguate",
+              f"{len(out.candidates)} candidates: {out.problem}")
+    with timed(ds):
+        choice, resp = agentic._disambiguate(question, out.candidates, llm, out.problem)
+    ds.usage = resp.usage
+    picked = agentic._answer_from_title(g, choice, answer_field) if choice else None
+    if picked is not None:
+        ds.detail += f" -> chose {choice!r}"
+        ds.doc_ids = picked.doc_ids
+    ds.outcome = "ok" if (picked and picked.sufficient) else "insufficient"
+    res.add(ds)
+    return picked if (picked and picked.sufficient) else None
 
 
 def run(question: str, qid: str, g: EventGraph, llm: LLM,
@@ -63,6 +80,21 @@ def run(question: str, qid: str, g: EventGraph, llm: LLM,
             return res
         res.notes.append(f"escalated from tier 0: {out.problem}")
 
+        # Ambiguity is not a planning failure. The traversal already found the
+        # right neighbourhood and returned a shortlist, so re-planning just
+        # reproduces the same shortlist at full price - go straight to the
+        # step that applies the constraint the question states.
+        if out.candidates:
+            resolved = _resolve(question, out, plan.answer_field, g, llm, res)
+            if resolved is not None:
+                res.tier = "tier1_disambiguated"
+                res.answer = resolved.answer
+                res.citations = [e.cite() for e in resolved.evidence]
+                res.strategy_changes += 1
+                res.stop_reason = ("resolved a tier 0 ambiguity without re-planning")
+                res.latency_s = time.time() - t0
+                return res
+
     # -- tier 1: let the model write the plan -------------------------------
     pstep, out1 = None, None
     plan1, pstep = plan_step(question, llm, g, use_rules=False)
@@ -87,6 +119,16 @@ def run(question: str, qid: str, g: EventGraph, llm: LLM,
             res.latency_s = time.time() - t0
             return res
         res.notes.append(f"escalated from tier 1: {out1.problem}")
+        if out1.candidates:
+            resolved = _resolve(question, out1, plan1.answer_field, g, llm, res)
+            if resolved is not None:
+                res.tier = "tier2_disambiguated"
+                res.answer = resolved.answer
+                res.citations = [e.cite() for e in resolved.evidence]
+                res.strategy_changes += 1
+                res.stop_reason = "resolved a tier 1 ambiguity without re-planning"
+                res.latency_s = time.time() - t0
+                return res
 
     # -- tier 2/3: hand over to the agent, carrying the cost already paid ----
     sub = agentic.run(question, qid, g, llm, index=index, use_rules=False)

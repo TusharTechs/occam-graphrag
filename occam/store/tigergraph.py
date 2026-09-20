@@ -129,10 +129,16 @@ class TGConfig:
     secret: str = ""
 
     @classmethod
-    def from_env(cls) -> "TGConfig":
+    def from_env(cls, require: bool = True) -> "TGConfig":
+        """Read connection settings. ``require=False`` yields placeholders so
+        ``--dry-run`` can print the GSQL without a cluster to connect to."""
         missing = [k for k in ("TG_HOST", "TG_GRAPH") if not os.environ.get(k)]
-        if missing:
+        if missing and require:
             raise RuntimeError(f"missing TigerGraph settings: {', '.join(missing)}")
+        if missing:
+            return cls(host=os.environ.get("TG_HOST", "<TG_HOST>"),
+                       graph=os.environ.get("TG_GRAPH", "OlympicKG"),
+                       username="", password="")
         return cls(host=os.environ["TG_HOST"], graph=os.environ["TG_GRAPH"],
                    username=os.environ.get("TG_USERNAME", "tigergraph"),
                    password=os.environ.get("TG_PASSWORD", ""),

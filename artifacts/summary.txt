@@ -1,0 +1,26 @@
+pipeline             n     acc  ev-rec  ev-prec    tok/q  tok/correct  steps    s/q  err
+----------------------------------------------------------------------------------------
+RAG                100   63.0%   75.6%    31.5%    3,259        5,174    2.0    2.5    0
+GraphRAG           100   97.0%   98.0%    97.5%      838          864    2.0    2.1    0
+Agentic GraphRAG   100  100.0%   99.0%    99.1%      890          890    2.1    2.4    0
+OCCAM (routed)     100  100.0%   99.5%    99.1%       64           64    2.1    0.2    0
+
+accuracy by question type
+qtype                         RAG           GraphRAG   Agentic GraphRAG     OCCAM (routed)
+------------------------------------------------------------------------------------------
+lookup              100% (2,718t)        100% (822t)        100% (821t)          100% (0t)
+multi_hop            75% (3,056t)         96% (847t)        100% (994t)        100% (220t)
+temporal             68% (3,630t)         91% (849t)        100% (900t)         100% (12t)
+aggregation          10% (3,412t)        100% (836t)        100% (836t)          100% (0t)
+superlative          60% (3,718t)        100% (824t)        100% (824t)          100% (0t)
+
+where the agent tier mattered (agentic vs single-pass GraphRAG)
+  rescued   : 3/100 questions (3%)  pub-040, pub-055, pub-099
+  regressed : 0  
+  extra cost: 5,221 tokens total
+              1,740 tokens per question rescued
+
+OCCAM routing
+  tier0_rule_graph            98 questions    100% correct         0 tok/q
+  tier1_disambiguated          1 questions    100% correct       263 tok/q
+  tier3_document_fallback      1 questions    100% correct     6,161 tok/q
