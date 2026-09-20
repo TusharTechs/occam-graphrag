@@ -59,8 +59,23 @@ CREATE DIRECTED EDGE REPRESENTS  (FROM Athlete, TO NOC)   WITH REVERSE_EDGE="REP
 CREATE DIRECTED EDGE PREV_EDITION(FROM Event,  TO Event)  WITH REVERSE_EDGE="NEXT_EDITION"
 CREATE DIRECTED EDGE SOURCED_FROM(FROM Chunk,  TO Event)  WITH REVERSE_EDGE="HAS_CHUNK"
 
-CREATE GRAPH {graph} (*)
+CREATE GRAPH {graph} ({types})
 """
+
+# The graph enumerates its own types rather than using (*). On a shared
+# instance - Savanna ships a pre-loaded Transaction_Fraud solution - the
+# wildcard would pull every global vertex and edge on the server into this
+# graph, fraud schema included.
+GRAPH_TYPES = [
+    "Games", "Sport", "Venue", "Athlete", "NOC", "Event", "Chunk",
+    "HAS_EVENT", "AT_VENUE", "IN_SPORT", "WON_GOLD", "WON_SILVER",
+    "WON_BRONZE", "REPRESENTS", "PREV_EDITION", "SOURCED_FROM",
+]
+
+
+def schema_gsql(graph: str) -> str:
+    """The schema script for `graph`, with its type list filled in."""
+    return SCHEMA_GSQL.format(graph=graph, types=", ".join(GRAPH_TYPES))
 
 # Embeddings live on Chunk as a TigerVector attribute so similarity search and
 # graph filters run in the same engine.
@@ -72,11 +87,14 @@ CREATE SCHEMA_CHANGE JOB add_vectors FOR GRAPH {graph} {{
 RUN SCHEMA_CHANGE JOB add_vectors
 """
 
+# Each script opens with USE GRAPH: GSQL rejects CREATE QUERY without a graph
+# context even though the statement names the graph in its FOR GRAPH clause.
 # One installed query per agent tool. Aggregation and argmax run entirely in
 # the database - the point of the graph tier is that the LLM never sees the
 # 8-43 documents these questions span.
 QUERIES_GSQL = {
     "count_above": """
+USE GRAPH {graph}
 CREATE OR REPLACE DISTRIBUTED QUERY count_above(
     STRING sport, INT yr, STRING season, INT threshold) FOR GRAPH {graph} {{
   SumAccum<INT> @@matched;
@@ -91,9 +109,11 @@ CREATE OR REPLACE DISTRIBUTED QUERY count_above(
         CASE WHEN e.has_competitors THEN
           CASE WHEN e.competitors > threshold THEN @@matched += 1 END
         ELSE @@unknown += 1 END;
-  PRINT @@matched AS count, @@unknown AS missing_field, @@docs AS evidence;
+  # "count" is a GSQL reserved word and cannot be used as an alias.
+  PRINT @@matched AS matched, @@unknown AS missing_field, @@docs AS evidence;
 }}""",
     "argmax_competitors": """
+USE GRAPH {graph}
 CREATE OR REPLACE DISTRIBUTED QUERY argmax_competitors(
     STRING sport, INT yr, STRING season) FOR GRAPH {graph} {{
   MaxAccum<INT> @@best;
@@ -107,6 +127,7 @@ CREATE OR REPLACE DISTRIBUTED QUERY argmax_competitors(
   PRINT Best, @@docs AS evidence;
 }}""",
     "event_at_venue_date": """
+USE GRAPH {graph}
 CREATE OR REPLACE DISTRIBUTED QUERY event_at_venue_date(
     STRING venue_name, STRING date_str) FOR GRAPH {graph} {{
   Seed = {{Venue.*}};
@@ -115,7 +136,15 @@ CREATE OR REPLACE DISTRIBUTED QUERY event_at_venue_date(
       WHERE lower(e.date_raw) == lower(date_str);
   PRINT E;
 }}""",
+    "event_by_title": """
+USE GRAPH {graph}
+CREATE OR REPLACE DISTRIBUTED QUERY event_by_title(STRING t) FOR GRAPH {graph} {{
+  Seed = {{Event.*}};
+  E = SELECT e FROM Seed:e WHERE lower(e.title) == lower(t);
+  PRINT E;
+}}""",
     "prev_edition": """
+USE GRAPH {graph}
 CREATE OR REPLACE DISTRIBUTED QUERY prev_edition(VERTEX<Event> ev) FOR GRAPH {graph} {{
   Start = {{ev}};
   P = SELECT p FROM Start:e -(PREV_EDITION:r)- Event:p;
@@ -198,76 +227,77 @@ def event_vertex(rec: EventRecord) -> tuple[str, dict[str, Any]]:
     }
 
 
-def load_events(conn, events: list[EventRecord], batch: int = 500) -> dict[str, int]:
-    """Upsert every vertex and edge derived from the parsed events."""
-    counts = {"Event": 0, "Games": 0, "Sport": 0, "Venue": 0, "Athlete": 0,
-              "NOC": 0, "HAS_EVENT": 0, "AT_VENUE": 0, "IN_SPORT": 0,
-              "medals": 0, "PREV_EDITION": 0}
+def load_events(conn, events: list[EventRecord], batch: int = 1000) -> dict[str, int]:
+    """Upsert every vertex and edge derived from the parsed events.
 
-    def flush(kind: str, rows: list) -> None:
-        if rows:
-            conn.upsertVertices(kind, rows)
+    Edges are grouped by (source type, edge type, target type) and sent with
+    upsertEdges rather than one call each: the corpus yields well over 13,000
+    edges, and a round trip apiece turns a one-minute load into an hour.
+    """
+    from collections import defaultdict
 
-    games, sports, venues, athletes, nocs = {}, set(), set(), set(), set()
+    counts: dict[str, int] = defaultdict(int)
+    games: dict[str, dict] = {}
+    sports: set[str] = set()
+    venues: set[str] = set()
+    athletes: set[str] = set()
+    nocs: set[str] = set()
     ev_rows: list = []
+    edges: dict[tuple[str, str, str], list] = defaultdict(list)
+    by_series: dict[tuple, dict[int, str]] = {}
+    by_doc = {e.doc_id: e for e in events}
+
     for rec in events:
         ev_rows.append(event_vertex(rec))
         if rec.games:
             games[rec.games] = {"year": rec.games_year, "season": rec.games_season}
+            edges[("Games", "HAS_EVENT", "Event")].append((rec.games, rec.doc_id, {}))
         if rec.sport:
             sports.add(rec.sport)
+            edges[("Event", "IN_SPORT", "Sport")].append((rec.doc_id, rec.sport, {}))
         if rec.venue:
             venues.add(rec.venue)
-        for slot in ("gold", "silver", "bronze"):
-            for name in split_medalists(getattr(rec, slot)):
-                athletes.add(name)
-            noc = getattr(rec, f"{slot}_noc")
-            if noc:
-                nocs.add(noc)
-        if len(ev_rows) >= batch:
-            flush("Event", ev_rows); counts["Event"] += len(ev_rows); ev_rows = []
-    flush("Event", ev_rows); counts["Event"] += len(ev_rows)
-
-    flush("Games", [(k, v) for k, v in games.items()]); counts["Games"] = len(games)
-    flush("Sport", [(s, {}) for s in sports]); counts["Sport"] = len(sports)
-    flush("Venue", [(v, {}) for v in venues]); counts["Venue"] = len(venues)
-    flush("Athlete", [(a, {}) for a in athletes]); counts["Athlete"] = len(athletes)
-    flush("NOC", [(n, {}) for n in nocs]); counts["NOC"] = len(nocs)
-
-    by_series: dict[tuple, dict[int, str]] = {}
-    for rec in events:
-        if rec.games:
-            conn.upsertEdge("Games", rec.games, "HAS_EVENT", "Event", rec.doc_id)
-            counts["HAS_EVENT"] += 1
-        if rec.venue:
-            conn.upsertEdge("Event", rec.doc_id, "AT_VENUE", "Venue", rec.venue)
-            counts["AT_VENUE"] += 1
-        if rec.sport:
-            conn.upsertEdge("Event", rec.doc_id, "IN_SPORT", "Sport", rec.sport)
-            counts["IN_SPORT"] += 1
+            edges[("Event", "AT_VENUE", "Venue")].append((rec.doc_id, rec.venue, {}))
         for slot, etype in (("gold", "WON_GOLD"), ("silver", "WON_SILVER"),
                             ("bronze", "WON_BRONZE")):
-            for name in split_medalists(getattr(rec, slot)):
-                conn.upsertEdge("Event", rec.doc_id, etype, "Athlete", name)
-                counts["medals"] += 1
             noc = getattr(rec, f"{slot}_noc")
+            for name in split_medalists(getattr(rec, slot)):
+                athletes.add(name)
+                edges[("Event", etype, "Athlete")].append((rec.doc_id, name, {}))
+                if noc:
+                    edges[("Athlete", "REPRESENTS", "NOC")].append((name, noc, {}))
             if noc:
-                for name in split_medalists(getattr(rec, slot)):
-                    conn.upsertEdge("Athlete", name, "REPRESENTS", "NOC", noc)
+                nocs.add(noc)
         key = (rec.sport, rec.discipline, rec.gender, rec.games_season)
         if rec.games_year:
             by_series.setdefault(key, {})[rec.games_year] = rec.doc_id
 
-    # PREV_EDITION is materialised from each page's own `prev` year within its
-    # series, so the temporal hop is one edge rather than a scan.
+    # PREV_EDITION is materialised from each page's own `prev` year inside its
+    # own series, so the temporal hop is a single edge rather than a scan.
     for series in by_series.values():
-        for year, doc_id in series.items():
-            rec = next(e for e in events if e.doc_id == doc_id)
-            target = series.get(rec.prev_year or -1)
+        for doc_id in series.values():
+            target = series.get(by_doc[doc_id].prev_year or -1)
             if target:
-                conn.upsertEdge("Event", doc_id, "PREV_EDITION", "Event", target)
-                counts["PREV_EDITION"] += 1
-    return counts
+                edges[("Event", "PREV_EDITION", "Event")].append((doc_id, target, {}))
+
+    def send_vertices(kind: str, rows: list) -> None:
+        for i in range(0, len(rows), batch):
+            conn.upsertVertices(kind, rows[i:i + batch])
+        counts[kind] += len(rows)
+
+    send_vertices("Event", ev_rows)
+    send_vertices("Games", [(k, v) for k, v in games.items()])
+    send_vertices("Sport", [(s, {}) for s in sorted(sports)])
+    send_vertices("Venue", [(v, {}) for v in sorted(venues)])
+    send_vertices("Athlete", [(a, {}) for a in sorted(athletes)])
+    send_vertices("NOC", [(n, {}) for n in sorted(nocs)])
+
+    for (src, etype, tgt), rows in edges.items():
+        uniq = list({(s, d): (s, d, a) for s, d, a in rows}.values())
+        for i in range(0, len(uniq), batch):
+            conn.upsertEdges(src, etype, tgt, uniq[i:i + batch])
+        counts[etype] += len(uniq)
+    return dict(counts)
 
 
 # --------------------------------------------------------------------------
@@ -285,7 +315,9 @@ class TigerGraphBackend:
         self.conn = conn
 
     def _run(self, name: str, **params):
-        return self.conn.runInstalledQuery(name, params=params, timeout=60_000)
+        # A query's first execution after install pays a cold-start cost, so the
+        # budget is generous; the aggregations themselves run in milliseconds.
+        return self.conn.runInstalledQuery(name, params=params, timeout=300_000)
 
     def count_above(self, sport: str, year: int, season: str,
                     threshold: int) -> tuple[int, list[str], int]:
@@ -295,7 +327,7 @@ class TigerGraphBackend:
         merged: dict = {}
         for block in out:
             merged.update(block)
-        return (int(merged.get("count", 0)),
+        return (int(merged.get("matched", 0)),
                 list(merged.get("evidence", [])),
                 int(merged.get("missing_field", 0)))
 
@@ -320,6 +352,15 @@ class TigerGraphBackend:
                     rows.extend(v.get("attributes", {}) for v in val
                                 if isinstance(v, dict))
         return rows
+
+    def event_by_title(self, title: str) -> dict | None:
+        """One Event's attributes, looked up by its exact page title."""
+        out = self._run("event_by_title", t=title)
+        for block in out:
+            for val in block.values():
+                if isinstance(val, list) and val:
+                    return val[0].get("attributes", {})
+        return None
 
     def prev_edition(self, doc_id: str) -> dict | None:
         out = self._run("prev_edition", ev=doc_id)

@@ -144,6 +144,37 @@ The parser is deliberately strict: a field it cannot read confidently stays `Non
 aggregation reports the gap rather than undercounting silently. 78 of 2,210 pages have no
 numeric `competitors` field, and a count over them says so.
 
+## Running on TigerGraph
+
+The graph is loaded into a TigerGraph Savanna workspace (4.2.5), and each agent
+tool is an installed GSQL query rather than Python standing in for one:
+
+```
+Event 2,187 · Athlete 6,039 · Venue 325 · Sport 42 · NOC 133 · Games 21
+HAS_EVENT 2,187 · IN_SPORT 2,187 · AT_VENUE 2,125 · PREV_EDITION 1,506
+WON_GOLD 2,732 · WON_SILVER 2,730 · WON_BRONZE 2,725 · REPRESENTS 6,078
+```
+
+`occam/store/local.py` stays the reference implementation, and
+`scripts/verify_tigergraph.py` runs the same questions through both and exits
+non-zero on any disagreement:
+
+```
+checked 78, mismatched 0, skipped 22 (no GSQL route yet)
+PASS: TigerGraph reproduces the reference results
+```
+
+**78 of the 100 public questions were verified as identical in the database**,
+covering every lookup, aggregation, superlative and venue+date route. The 22
+skipped are the temporal questions: matching an event to its series is still
+Python-side, so there is no single installed query to compare against yet.
+
+Aggregation runs entirely in the database. `count_above` walks every event of a
+sport at one Games and returns the count with its evidence, so the model never
+sees the 8 to 43 documents the question spans. `has_competitors` is stored
+explicitly because GSQL has no NULL: without it a missing field would read as
+`0` and quietly corrupt the count.
+
 ## Honest limits
 
 - **Tier 0 is a cache, not understanding.** Its rules match the five question shapes in
@@ -156,6 +187,10 @@ numeric `competitors` field, and a count over them says so.
   exceeded 73"*, *"whichever Summer Games came directly before Rio 2016"*. **All six fall
   through to tier 1 and all six are answered correctly**, at ~830 tokens each. The rule
   cache is an optimisation on the hot path, not the thing that makes the system work.
+- **The benchmark numbers above were produced against the local store**, not
+  Savanna. They are identical where both have a route, which the parity check
+  proves for 78 of 100 questions, but the token and latency figures are from
+  the in-process path.
 - **A relational database could also do the aggregations.** The graph earns its place on
   the traversals (venue → event → medallist, `PREV_EDITION` chains) and on keeping vectors
   beside the rows, not on `COUNT(*)`.

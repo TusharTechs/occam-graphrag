@@ -66,6 +66,10 @@ def main() -> int:
                 title, ev = remote.argmax_competitors(plan.sport, plan.games_year,
                                                       plan.games_season)
                 got_answer, got_docs = title, ev
+            elif plan.intent is Intent.FIELD_OF_EVENT:
+                row = remote.event_by_title(plan.title) or {}
+                got_answer = row.get(plan.field_name)
+                got_docs = [row["doc_id"]] if row.get("doc_id") else []
             elif plan.intent is Intent.VENUE_DATE:
                 rows = remote.event_at_venue_date(plan.venue, plan.date)
                 got_answer = rows[0].get("gold") if len(rows) == 1 else None

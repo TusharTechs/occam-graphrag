@@ -30,7 +30,7 @@ def main() -> None:
 
     if args.dry_run:
         if args.schema:
-            print(tg.SCHEMA_GSQL.format(graph=cfg.graph))
+            print(tg.schema_gsql(cfg.graph))
         if args.vectors:
             print(tg.VECTOR_GSQL.format(graph=cfg.graph, dim=384))
         if args.queries:
@@ -42,7 +42,7 @@ def main() -> None:
     # The graph does not exist during --schema, so that step connects without it.
     conn = tg.connect(cfg, with_graph=not args.schema)
     if args.schema:
-        print(conn.gsql(tg.SCHEMA_GSQL.format(graph=cfg.graph)))
+        print(conn.gsql(tg.schema_gsql(cfg.graph)))
     if args.vectors:
         print(conn.gsql(tg.VECTOR_GSQL.format(graph=cfg.graph, dim=384)))
     if args.load or args.queries or args.vectors:
@@ -54,9 +54,14 @@ def main() -> None:
             print(f"    {k:<14} {v:>7,}")
     if args.queries:
         for name, q in tg.QUERIES_GSQL.items():
-            print(f"    installing {name}")
-            conn.gsql(q.format(graph=cfg.graph))
-        conn.gsql(f"USE GRAPH {cfg.graph}\nINSTALL QUERY ALL")
+            out = conn.gsql(q.format(graph=cfg.graph))
+            ok = "error" not in out.lower()
+            print(f"    {'ok  ' if ok else 'FAIL'} {name}")
+            if not ok:                      # never let a GSQL error pass silently
+                print("      " + out.strip().replace("\n", "\n      "))
+        print("    installing ...")
+        print("      " + conn.gsql(f"USE GRAPH {cfg.graph}\nINSTALL QUERY ALL")
+              .strip().replace("\n", "\n      "))
     print("  done")
 
 
