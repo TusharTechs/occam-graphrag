@@ -19,6 +19,10 @@ from typing import Any
 from occam.ingest.parse import EventRecord, split_medalists
 
 SCHEMA_GSQL = """
+# Global vertex and edge types must be created in the global scope; without
+# USE GLOBAL the first CREATE VERTEX is rejected.
+USE GLOBAL
+
 CREATE VERTEX Games (
     PRIMARY_ID gid STRING, year INT, season STRING
 ) WITH primary_id_as_attribute="true"
@@ -252,3 +256,68 @@ def load_events(conn, events: list[EventRecord], batch: int = 500) -> dict[str, 
                 conn.upsertEdge("Event", doc_id, "PREV_EDITION", "Event", target)
                 counts["PREV_EDITION"] += 1
     return counts
+
+
+# --------------------------------------------------------------------------
+# Query execution - the same surface as occam.store.local.EventGraph
+# --------------------------------------------------------------------------
+
+class TigerGraphBackend:
+    """Runs the installed GSQL behind each agent tool.
+
+    Method names and return shapes mirror ``EventGraph`` so the two can be
+    compared directly; ``scripts/verify_tigergraph.py`` asserts they agree.
+    """
+
+    def __init__(self, conn):
+        self.conn = conn
+
+    def _run(self, name: str, **params):
+        return self.conn.runInstalledQuery(name, params=params, timeout=60_000)
+
+    def count_above(self, sport: str, year: int, season: str,
+                    threshold: int) -> tuple[int, list[str], int]:
+        """Count events over a threshold. Returns (count, evidence doc ids, missing)."""
+        out = self._run("count_above", sport=sport, yr=year, season=season,
+                        threshold=threshold)
+        merged: dict = {}
+        for block in out:
+            merged.update(block)
+        return (int(merged.get("count", 0)),
+                list(merged.get("evidence", [])),
+                int(merged.get("missing_field", 0)))
+
+    def argmax_competitors(self, sport: str, year: int,
+                           season: str) -> tuple[str | None, list[str]]:
+        out = self._run("argmax_competitors", sport=sport, yr=year, season=season)
+        title, evidence = None, []
+        for block in out:
+            for key, val in block.items():
+                if key == "evidence":
+                    evidence = list(val)
+                elif isinstance(val, list) and val and isinstance(val[0], dict):
+                    title = val[0].get("attributes", {}).get("title")
+        return title, evidence
+
+    def event_at_venue_date(self, venue: str, date: str) -> list[dict]:
+        out = self._run("event_at_venue_date", venue_name=venue, date_str=date)
+        rows: list[dict] = []
+        for block in out:
+            for val in block.values():
+                if isinstance(val, list):
+                    rows.extend(v.get("attributes", {}) for v in val
+                                if isinstance(v, dict))
+        return rows
+
+    def prev_edition(self, doc_id: str) -> dict | None:
+        out = self._run("prev_edition", ev=doc_id)
+        for block in out:
+            prev = block.get("previous")
+            if isinstance(prev, list) and prev:
+                return prev[0].get("attributes", {})
+        return None
+
+    def stats(self) -> dict[str, int]:
+        """Vertex counts, for confirming a load actually landed."""
+        return {v: self.conn.getVertexCount(v)
+                for v in ("Games", "Event", "Venue", "Sport", "Athlete", "NOC")}
