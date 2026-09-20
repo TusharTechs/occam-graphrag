@@ -122,8 +122,10 @@ def chart_frontier(bp: dict[str, Agg]) -> str:
     direct-labelled because four scatter points cannot rely on hue alone.
     """
     import math
-    W, H = 720, 330
-    L, R, T, B = 56, 24, 18, 46
+    W, H = 720, 344
+    # The top margin has to clear a two-line label sitting *above* a point at
+    # 100% accuracy, or the label renders outside the viewBox.
+    L, R, T, B = 56, 24, 52, 46
     pts = []
     for p in PIPELINE_ORDER:
         a = bp.get(p)
@@ -160,18 +162,47 @@ def chart_frontier(bp: dict[str, Agg]) -> str:
                  f'text-anchor="middle" font-size="12" fill="var(--text-secondary)">'
                  f'answer accuracy</text>')
 
+    # Two pipelines can land almost on top of each other - GraphRAG at 97% /
+    # 838 tokens and the agent at 100% / 890 sit within a few pixels - so a
+    # fixed label offset prints one label over the other. Each label tries
+    # placements in order and takes the first that clears every label already
+    # placed, falling back to a leader line when it has to move far.
+    placed: list[tuple[float, float, float, float]] = []
+    # Each label is two lines: the name at dy and the value at dy+16, so its
+    # real extent runs from dy-13 to dy+28. Candidates are spaced by more than
+    # that full height, or "above" and "below" still collide.
+    LBL_TOP, LBL_BOT = -14, 29
+    CAND = [(14, -13, "start"), (14, 34, "start"), (-14, -13, "end"),
+            (-14, 34, "end"), (14, -60, "start"), (-14, 81, "end")]
+
+    def clashes(box, boxes) -> bool:
+        ax0, ay0, ax1, ay1 = box
+        return any(not (ax1 < bx0 or ax0 > bx1 or ay1 < by0 or ay0 > by1)
+                   for bx0, by0, bx1, by1 in boxes)
+
     for p, tok, acc in pts:
         x, y = sx(tok), sy(acc)
         lbl = PIPELINE_LABEL[p]
-        anchor = "end" if x > W - 150 else "start"
-        dx = -14 if anchor == "end" else 14
+        val = f"{acc:.0%} · {tok:,.0f} tok"
+        wpx = max(len(lbl) * 6.6, len(val) * 6.2)
+
+        for dx, dy, anchor in CAND:
+            x0 = x + dx if anchor == "start" else x + dx - wpx
+            box = (x0 - 2, y + dy + LBL_TOP, x0 + wpx + 2, y + dy + LBL_BOT)
+            if not clashes(box, placed) and box[0] > 2 and box[2] < W + 20:
+                break
+        placed.append(box)
+
         tip = f"{lbl}: {acc:.0%} accuracy at {tok:,.0f} tokens/question"
+        if abs(dy + 13) > 24:          # displaced far enough to need a connector
+            parts.append(f'<line x1="{x:.1f}" y1="{y:.1f}" x2="{x + dx * 0.6:.1f}" '
+                         f'y2="{y + dy + 2:.1f}" stroke="var(--grid)" stroke-width="1"/>')
         parts.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="8" fill="var(--series-{p})" '
                      f'stroke="var(--surface-1)" stroke-width="2" data-tip="{_esc(tip)}"/>')
-        parts.append(f'<text x="{x+dx:.1f}" y="{y-11:.1f}" text-anchor="{anchor}" '
+        parts.append(f'<text x="{x+dx:.1f}" y="{y+dy:.1f}" text-anchor="{anchor}" '
                      f'font-size="12.5" font-weight="600" fill="var(--text-primary)">{_esc(lbl)}</text>')
-        parts.append(f'<text x="{x+dx:.1f}" y="{y+5:.1f}" text-anchor="{anchor}" font-size="11.5" '
-                     f'fill="var(--text-secondary)" class="mono">{acc:.0%} · {tok:,.0f} tok</text>')
+        parts.append(f'<text x="{x+dx:.1f}" y="{y+dy+16:.1f}" text-anchor="{anchor}" '
+                     f'font-size="11.5" fill="var(--text-secondary)" class="mono">{val}</text>')
     parts.append("</svg>")
     return "".join(parts)
 
