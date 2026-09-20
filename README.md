@@ -148,6 +148,12 @@ numeric `competitors` field, and a count over them says so.
   this benchmark. The generalisation number is GraphRAG's **97%** — that pipeline plans
   every question with the LLM and no rules. If every question were novel, OCCAM degrades
   to tier 1 and costs one planning call, not zero.
+
+  This is testable, so it is tested. `scripts/paraphrase_check.py` asks the same facts in
+  wordings no rule matches — *"tally the biathlon events … where the competitor count
+  exceeded 73"*, *"whichever Summer Games came directly before Rio 2016"*. **All six fall
+  through to tier 1 and all six are answered correctly**, at ~830 tokens each. The rule
+  cache is an optimisation on the hot path, not the thing that makes the system work.
 - **A relational database could also do the aggregations.** The graph earns its place on
   the traversals (venue → event → medallist, `PREV_EDITION` chains) and on keeping vectors
   beside the rows, not on `COUNT(*)`.
