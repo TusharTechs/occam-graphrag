@@ -2,8 +2,9 @@
 __pycache__/
 *.pyc
 .env
-data/*.jsonl
-artifacts/*.json
-artifacts/*.jsonl
-.DS_Store
 .certs/
+data/*.jsonl
+artifacts/index/
+artifacts/*.partial
+artifacts/*.log
+.DS_Store

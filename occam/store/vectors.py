@@ -79,6 +79,9 @@ class HybridIndex:
         # thread-safe; concurrent encode() calls abort the process rather
         # than raising, so every use of the model is serialised.
         self._model_lock = threading.Lock()
+        # Query vectors are precomputed on the main thread; see
+        # `precompute_queries`.
+        self._qcache: dict[str, np.ndarray] = {}
 
     # -- construction ------------------------------------------------------
     @classmethod
@@ -133,6 +136,24 @@ class HybridIndex:
         from rank_bm25 import BM25Okapi
         self._bm25 = BM25Okapi([_tok(c.embed_text) for c in self.chunks])
 
+    def precompute_queries(self, queries: list[str]) -> None:
+        """Embed every query up front, on the calling thread.
+
+        torch aborts the process rather than raising when its encoder is driven
+        from several threads at once, and a lock around it only serialises the
+        crash window without removing it. Embedding the whole question set
+        before the benchmark fans out keeps torch on one thread entirely; the
+        workers then touch nothing but numpy and BM25, which are safe.
+        """
+        todo = [q for q in dict.fromkeys(queries) if q not in self._qcache]
+        if not todo:
+            return
+        vecs = self._model_unlocked().encode(todo, batch_size=64,
+                                             convert_to_numpy=True,
+                                             normalize_embeddings=True)
+        for q, v in zip(todo, vecs):
+            self._qcache[q] = v.astype(np.float32)
+
     # -- retrieval ---------------------------------------------------------
     def search(self, query: str, k: int = 10, alpha: float = 60.0) -> list[tuple[Chunk, float]]:
         """Reciprocal-rank fusion of dense and lexical rankings.
@@ -141,9 +162,11 @@ class HybridIndex:
         are not on a comparable scale, and rank fusion is stable without
         per-query tuning.
         """
-        with self._model_lock:
-            qv = self._model_unlocked().encode([query], convert_to_numpy=True,
-                                               normalize_embeddings=True)[0]
+        qv = self._qcache.get(query)
+        if qv is None:
+            with self._model_lock:
+                qv = self._model_unlocked().encode([query], convert_to_numpy=True,
+                                                   normalize_embeddings=True)[0]
         dense = np.argsort(-(self._emb @ qv))[:k * 5]
         lex = np.argsort(-np.asarray(self._bm25.get_scores(_tok(query))))[:k * 5]
 

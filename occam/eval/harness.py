@@ -85,16 +85,40 @@ class _Limiter:
 def run_benchmark(questions: list[dict], g: EventGraph, index: HybridIndex,
                   llm_factory, pipelines: tuple[str, ...] = PIPELINES,
                   workers: int = 4, rpm: int = 240,
-                  progress: bool = True) -> list[Scored]:
+                  progress: bool = True, checkpoint: str | Path | None = None,
+                  resume: bool = True) -> list[Scored]:
     """Execute every (question, pipeline) pair and score it.
 
     A fresh LLM handle per task keeps the per-result token totals independent;
     the shared limiter keeps the whole run inside the provider's rate limit.
+
+    Results are appended to `checkpoint` as they land. A long run that dies -
+    torch has aborted this process outright rather than raising - then resumes
+    from the checkpoint instead of discarding several hundred completed runs.
     """
     limiter = _Limiter(rpm)
+    # Embed every question before fanning out, so no worker thread touches the
+    # encoder (see HybridIndex.precompute_queries).
+    if index is not None:
+        index.precompute_queries([q["question"] for q in questions])
     tasks = [(p, q) for q in questions for p in pipelines]
     out: list[Scored] = []
     done = 0
+
+    ck_path = Path(checkpoint) if checkpoint else None
+    seen: set[tuple[str, str]] = set()
+    if ck_path and resume and ck_path.exists():
+        for line in open(ck_path, encoding="utf-8"):
+            if line.strip():
+                row = json.loads(line)
+                seen.add((row["pipeline"], row["qid"]))
+        tasks = [(p, q) for p, q in tasks if (p, q["qid"]) not in seen]
+        if progress and seen:
+            print(f"    resuming: {len(seen)} runs already on disk, "
+                  f"{len(tasks)} to go", flush=True)
+    if ck_path:
+        ck_path.parent.mkdir(parents=True, exist_ok=True)
+    ck_lock = threading.Lock()
 
     def work(pipeline: str, q: dict) -> Scored:
         limiter.wait()
@@ -110,7 +134,12 @@ def run_benchmark(questions: list[dict], g: EventGraph, index: HybridIndex,
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(work, p, q): (p, q) for p, q in tasks}
         for fut in as_completed(futures):
-            out.append(fut.result())
+            s = fut.result()
+            out.append(s)
+            if ck_path:
+                with ck_lock, open(ck_path, "a", encoding="utf-8") as fh:
+                    fh.write(json.dumps(s.to_json(), ensure_ascii=False) + "\n")
+                    fh.flush()
             done += 1
             if progress and done % 20 == 0:
                 print(f"    {done}/{len(tasks)} runs complete", flush=True)
@@ -124,3 +153,22 @@ def save(scored: list[Scored], path: str | Path) -> Path:
         for s in sorted(scored, key=lambda x: (x.result.qid, x.result.pipeline)):
             fh.write(json.dumps(s.to_json(), ensure_ascii=False) + "\n")
     return path
+
+
+def consolidate(checkpoint: str | Path, out: str | Path) -> Path:
+    """Fold a checkpoint file into the final results file.
+
+    Later rows win, so a re-run of a failed question replaces its earlier
+    result rather than appearing twice.
+    """
+    rows: dict[tuple[str, str], dict] = {}
+    for line in open(checkpoint, encoding="utf-8"):
+        if line.strip():
+            r = json.loads(line)
+            rows[(r["pipeline"], r["qid"])] = r
+    out = Path(out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", encoding="utf-8") as fh:
+        for key in sorted(rows, key=lambda k: (k[1], k[0])):
+            fh.write(json.dumps(rows[key], ensure_ascii=False) + "\n")
+    return out

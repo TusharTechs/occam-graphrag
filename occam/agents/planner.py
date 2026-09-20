@@ -79,8 +79,16 @@ def plan_with_llm(question: str, llm: LLM, sports: list[str],
               "ambiguity, add the constraint that separates the candidates.\n")
     prompt = _PROMPT.format(schema=SCHEMA_DOC, sports=", ".join(sports),
                             question=question, feedback=fb)
-    resp = llm.complete(prompt, system=_SYSTEM, max_output_tokens=400)
-    return _to_plan(extract_json(resp.text)), resp
+    resp = llm.complete(prompt, system=_SYSTEM, max_output_tokens=900)
+    try:
+        return _to_plan(extract_json(resp.text)), resp
+    except ValueError:
+        # A reply can still come back truncated mid-object. One retry that says
+        # so is cheaper than losing the question, and the failure is recorded
+        # in the trace either way.
+        retry = llm.complete(prompt + "\n\nReturn ONLY compact single-line JSON.",
+                             system=_SYSTEM, max_output_tokens=900)
+        return _to_plan(extract_json(retry.text)), retry
 
 
 _ALLOWED_FIELDS = {"competitors", "nations", "gold", "silver", "bronze",

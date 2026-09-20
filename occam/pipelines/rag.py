@@ -18,8 +18,10 @@ from occam.pipelines.base import PipelineResult, Step, timed
 from occam.store.vectors import HybridIndex
 
 _SYSTEM = ("You answer questions using only the provided document excerpts. "
-           "Answer with the shortest exact value that answers the question - a "
-           "number, a name, or an event title - and nothing else. "
+           "Reply with the exact value and nothing else: a bare number for counts, "
+           "the person's name exactly as written for medallists, and for 'which "
+           "event' questions the COMPLETE page title of the event, in the form "
+           "'Sport at the YEAR Season Olympics - Discipline'. "
            "If the excerpts do not contain the answer, reply exactly: INSUFFICIENT")
 
 _PROMPT = """EXCERPTS
@@ -27,7 +29,7 @@ _PROMPT = """EXCERPTS
 
 QUESTION: {question}
 
-Answer with the exact value only."""
+Answer with the exact value only. For "which event" questions give the full page title."""
 
 
 def run(question: str, qid: str, index: HybridIndex, llm: LLM,
