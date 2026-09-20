@@ -39,11 +39,15 @@ def main() -> None:
         print(f"\n  would load {len(ctx.graph.events)} events")
         return
 
-    conn = tg.connect(cfg)
+    # The graph does not exist during --schema, so that step connects without it.
+    conn = tg.connect(cfg, with_graph=not args.schema)
     if args.schema:
         print(conn.gsql(tg.SCHEMA_GSQL.format(graph=cfg.graph)))
     if args.vectors:
         print(conn.gsql(tg.VECTOR_GSQL.format(graph=cfg.graph, dim=384)))
+    if args.load or args.queries or args.vectors:
+        if args.schema:                      # reconnect now the graph exists
+            conn = tg.connect(cfg, with_graph=True)
     if args.load:
         counts = tg.load_events(conn, ctx.graph.events)
         for k, v in counts.items():

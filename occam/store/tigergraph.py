@@ -149,17 +149,29 @@ class TGConfig:
                    secret=os.environ.get("TG_SECRET", ""))
 
 
-def connect(cfg: TGConfig | None = None):
-    """Open an authenticated pyTigerGraph connection."""
+def connect(cfg: TGConfig | None = None, with_graph: bool = True):
+    """Open an authenticated pyTigerGraph connection.
+
+    ``with_graph=False`` omits the graph name, which is required for the very
+    first call: naming a graph that does not exist yet fails, and the schema
+    step is precisely when it does not exist. A RESTPP token also cannot be
+    issued before the graph is there, so that is skipped too.
+    """
     from occam.net import ensure_tls_trust
     cfg = cfg or TGConfig.from_env()
     ensure_tls_trust(cfg.host.split("//")[-1].split("/")[0])
     import pyTigerGraph as tg
-    conn = tg.TigerGraphConnection(
-        host=cfg.host, graphname=cfg.graph,
-        username=cfg.username, password=cfg.password)
+    kwargs = dict(host=cfg.host, username=cfg.username, password=cfg.password)
+    if with_graph:
+        kwargs["graphname"] = cfg.graph
     if cfg.secret:
-        conn.getToken(cfg.secret)
+        kwargs["gsqlSecret"] = cfg.secret
+    conn = tg.TigerGraphConnection(**kwargs)
+    if cfg.secret and with_graph:
+        try:
+            conn.getToken(cfg.secret)
+        except Exception as exc:          # token is only needed for data calls
+            print(f"    note: could not mint a RESTPP token yet ({exc})")
     return conn
 
 
