@@ -6,3 +6,4 @@ data/*.jsonl
 artifacts/*.json
 artifacts/*.jsonl
 .DS_Store
+.certs/
