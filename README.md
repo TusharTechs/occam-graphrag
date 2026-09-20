@@ -20,7 +20,7 @@ actually answer it.
 
 100 public questions, four pipelines, zero errors:
 
-| Pipeline | Accuracy | Evidence recall | Tokens / question | Tokens / correct answer |
+| Pipeline | Accuracy | Completeness | Tokens / question | Tokens / correct answer |
 |---|---:|---:|---:|---:|
 | RAG | 63% | 76% | 3,259 | 5,174 |
 | GraphRAG | 97% | 98% | 838 | 864 |
@@ -35,7 +35,7 @@ That is the finding: on this benchmark agentic reasoning is decisive on ~3% of q
 and pure overhead on the rest. The value is not in *having* an agent. It is in
 knowing which questions need one.
 
-Full dashboard: [`artifacts/dashboard.html`](artifacts/dashboard.html) ·
+Full dashboard: **https://tushartechs.github.io/occam-graphrag/** ·
 raw runs: [`artifacts/results_public.jsonl`](artifacts/results_public.jsonl),
 [`artifacts/results_hidden.jsonl`](artifacts/results_hidden.jsonl)
 
@@ -211,11 +211,12 @@ systems.
 Answer accuracy cannot tell a system that found the evidence from one that guessed well.
 The public questions ship `gold_doc_ids`, so every run is scored on retrieval directly:
 
-- **evidence recall**: share of the question's gold documents the pipeline actually retrieved
+- **completeness** (evidence recall): share of the question's gold documents the
+  pipeline actually retrieved
 - **evidence precision**: share of retrieved documents that were gold
 - **cost to correct**: tokens spent per correct answer
 - **strategy changes**: times the plan was rewritten after seeing evidence
 - **stop reason**: recorded in plain language on every run
 
-RAG's 63% accuracy against 76% evidence recall, with superlatives at 0.16, is the whole
+RAG's 63% accuracy against 76% completeness, with superlatives at 0.16, is the whole
 argument for reporting both.

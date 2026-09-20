@@ -161,7 +161,7 @@ def summary_text(rows: list[dict]) -> str:
     bp = by_pipeline(rows)
     bpq = by_pipeline_qtype(rows)
     lines: list[str] = []
-    w = f"{'pipeline':<18}{'n':>4}{'acc':>8}{'ev-rec':>8}{'ev-prec':>9}" \
+    w = f"{'pipeline':<18}{'n':>4}{'acc':>8}{'complete':>10}{'ev-prec':>9}" \
         f"{'tok/q':>9}{'tok/correct':>13}{'steps':>7}{'s/q':>7}{'err':>5}"
     lines.append(w)
     lines.append("-" * len(w))
