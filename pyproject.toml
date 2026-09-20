@@ -1,7 +1,7 @@
 [project]
 name = "occam"
 version = "0.1.0"
-description = "Cost-aware Agentic GraphRAG on TigerGraph — proving when agentic retrieval earns its token cost"
+description = "Cost-aware Agentic GraphRAG on TigerGraph: proving when agentic retrieval earns its token cost"
 requires-python = ">=3.11"
 dependencies = [
     "pyTigerGraph>=1.8",

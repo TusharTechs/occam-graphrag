@@ -351,7 +351,7 @@ agentic traces are in <span class="mono">artifacts/results_hidden.jsonl</span>.<
     doc = f"""{head}
 <title>OCCAM Benchmark</title><style>{CSS}</style>{open_body}<div class="wrap">
 
-<h1>OCCAM &mdash; when is an agent worth its tokens?</h1>
+<h1>OCCAM: when is an agent worth its tokens?</h1>
 <p class="sub">RAG vs GraphRAG vs Agentic GraphRAG vs cost-aware routing,
 over {n_q} questions on the TigerGraph Agentic GraphRAG corpus.</p>
 <p class="note">Every number on this page is computed from the raw run files in
@@ -366,7 +366,7 @@ routing reaches the same height for roughly {saving:,.0f}&times; fewer tokens.</
 
 <h2>Where each approach breaks</h2>
 <p class="note">RAG does not degrade gracefully on aggregation and superlative
-questions &mdash; those need a median of 11 documents and up to 43, so the evidence
+questions. Those need a median of 11 documents and up to 43, so the evidence
 does not fit in a top-10 retrieval whatever the prompt says.</p>
 <div class="card">{_legend()}<figure>{chart_qtype(bpq)}</figure></div>
 
@@ -391,7 +391,7 @@ the same {av['n']} questions:</p>
 <tr><td>extra tokens spent in total</td><td class="mono">{av['extra_tokens_total']:,}</td></tr>
 <tr><td>extra tokens per question rescued</td><td class="mono">{per_rescue}</td></tr>
 </tbody></table>
-<div class="hl">Rescued: <span class="mono">{_esc(rescued)}</span> &mdash; all three were
+<div class="hl">Rescued: <span class="mono">{_esc(rescued)}</span>. All three were
 cases where the graph narrowed the answer to a handful of candidates but could not
 choose between them. That is the shape of question worth paying an agent for.</div>
 </div>

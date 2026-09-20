@@ -19,7 +19,7 @@ CASES = [
     ("Name the athlete who took first place in the men's 20 km racewalk at "
      "whichever Summer Games came directly before Rio 2016.", "Chen Ding", "temporal"),
     ("At the 2012 London Games, the Royal Artillery Barracks hosted an event on "
-     "28 July 2012 — who claimed gold there?", "Yi Siling", "multi_hop"),
+     "28 July 2012, so who claimed gold there?", "Yi Siling", "multi_hop"),
     ("How many different countries entered the women's 57 kg judo competition "
      "at Rio 2016?", "23", "lookup"),
     ("For the 2016 Olympic men's horizontal bar gymnastics final, what was the "

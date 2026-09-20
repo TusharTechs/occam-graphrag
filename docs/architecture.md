@@ -1,4 +1,4 @@
-# OCCAM — architecture
+# OCCAM architecture
 
 ## System
 
@@ -16,7 +16,7 @@ flowchart LR
         CV -. SOURCED_FROM .-> GV
     end
 
-    subgraph tools["Agent tools — one GSQL query each"]
+    subgraph tools["Agent tools: one GSQL query each"]
         T1[field_of_event]
         T2[count_above]
         T3[argmax_competitors]
@@ -45,7 +45,7 @@ What differs between pipelines is **only who writes the plan**:
 
 | Pipeline | Plan author | On failure |
 |---|---|---|
-| RAG | *(no plan — top-k chunks → reader)* | answers anyway |
+| RAG | *(no plan: top-k chunks → reader)* | answers anyway |
 | GraphRAG | one LLM call | reports insufficiency, stops |
 | Agentic | LLM, re-invoked with the executor's complaint | re-plans, disambiguates, falls back to documents |
 | OCCAM | rule cache, then LLM, then agent | escalates one tier at a time |
@@ -60,14 +60,14 @@ The executor never raises and never guesses. It returns one of:
 
 | Verdict | Meaning | What escalates |
 |---|---|---|
-| `sufficient` | answer + evidence | nothing — stop |
+| `sufficient` | answer + evidence | nothing, stop |
 | `ambiguous_*` + `candidates` | right neighbourhood, several rows | disambiguator (not a re-plan) |
 | `no_event_titled` / `no_events_for` | plan pointed nowhere | re-plan with the complaint |
 | `field_missing` | row found, field absent | reported as a gap, not zero |
 | `executor_error` | bad plan | re-plan |
 
 That taxonomy is the whole control flow. Escalation is driven by a named gap,
-so the controller can never silently skip evidence — and every gap lands in the
+so the controller can never silently skip evidence, and every gap lands in the
 trace that the dashboard reads.
 
 ## Specialised agents
@@ -86,7 +86,7 @@ trace that the dashboard reads.
 Every step records agent, action, tokens (context / input / output), latency,
 documents touched, chunk count and outcome. Each run additionally records the
 tier that answered, the number of strategy changes, and a plain-language stop
-reason — the facts the guidebook asks for, in one shared structure so all four
+reason: the facts the guidebook asks for, in one shared structure so all four
 pipelines are measured on the same basis.
 
 ## Data notes that shaped the design
