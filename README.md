@@ -1,8 +1,8 @@
 # OCCAM
 
-**Cost-aware Agentic GraphRAG on TigerGraph — measuring when an agent is worth its tokens.**
+**Cost-aware Agentic GraphRAG on TigerGraph: measuring when an agent is worth its tokens.**
 
-> *Entities should not be multiplied beyond necessity — and neither should retrieval steps.*
+> *Entities should not be multiplied beyond necessity, and neither should retrieval steps.*
 
 Built for the [TigerGraph Agentic GraphRAG Hackathon](https://alluring-beryllium-491.notion.site/Agentic-GraphRAG-Hackathon-Guidebook-34fc2cb129c08146998af3568d7d2594).
 
@@ -12,8 +12,9 @@ The guidebook asks a sharper question than "is agentic better":
 > It is to determine whether the additional reasoning and retrieval steps are worth the
 > additional complexity and token cost."*
 
-OCCAM answers it with numbers. It runs all three required pipelines, and adds a fourth —
-a controller that routes each question to the cheapest tier that can actually answer it.
+OCCAM answers it with numbers. It runs all three required pipelines, and adds a
+fourth: a controller that routes each question to the cheapest tier that can
+actually answer it.
 
 ## Headline result
 
@@ -31,8 +32,8 @@ tokens per question rescued. Routing reaches the same 100% for 64 tokens per que
 because 98 questions never need a language model at all.**
 
 That is the finding: on this benchmark agentic reasoning is decisive on ~3% of questions
-and pure overhead on the rest. The value is not in *having* an agent — it is in knowing
-which questions need one.
+and pure overhead on the rest. The value is not in *having* an agent. It is in
+knowing which questions need one.
 
 Full dashboard: [`artifacts/dashboard.html`](artifacts/dashboard.html) ·
 raw runs: [`artifacts/results_public.jsonl`](artifacts/results_public.jsonl),
@@ -48,14 +49,15 @@ raw runs: [`artifacts/results_public.jsonl`](artifacts/results_public.jsonl),
 | aggregation | **10%** | 100% | 100% | 100% |
 | superlative | 60% | 100% | 100% | 100% |
 
-RAG does not degrade gracefully on aggregation — it fails **structurally**. *"How many
+RAG does not degrade gracefully on aggregation. It fails **structurally**. *"How many
 cycling events at the 2008 Summer Olympics had more than 30 competitors?"* needs every
 cycling event at those Games: a median of 11 documents and up to 43. No top-10 retrieval
 holds that evidence, whatever the prompt says. A graph aggregation answers it exactly,
 and the model never sees the rows.
 
-Its 60% on superlatives is worse news than it looks. Evidence recall there is **0.16** —
-it names a plausible winner (the marathon usually does have the most competitors) without
+Its 60% on superlatives is worse news than it looks. Evidence recall there is
+**0.16**: it names a plausible winner (the marathon usually does have the most
+competitors) without
 ever retrieving the documents that would settle it. Answer accuracy alone would have
 scored that as success. The dashboard charts accuracy against evidence recall precisely
 so that gap is visible.
@@ -92,7 +94,7 @@ flowchart TB
 ```
 
 Every tier reports *what it was missing*, and that complaint is what triggers the next
-step — escalation is never a guess about difficulty. Two consequences matter:
+step. Escalation is never a guess about difficulty. Two consequences matter:
 
 - **The controller cannot silently skip evidence.** A tier hands over only when it can
   name the gap, and the gap is recorded in the trace.
@@ -116,14 +118,14 @@ so a filtered similarity search can run *inside* a traversal with no cross-syste
 
 `PREV_EDITION` is materialised from each page's own `prev` field, which makes *"the
 Olympics held immediately before 2016"* a single edge hop rather than a scan. Answering
-temporal questions by traversing that edge — and citing the anchor event as well as the
-target — took evidence recall on that question type from 50% to 95%.
+temporal questions by traversing that edge, and citing the anchor event as well as the
+target, took evidence recall on that question type from 50% to 95%.
 
 ## What the corpus actually is
 
 Worth stating plainly, because it shaped every design decision: the organisers supply the
 corpus and score against 50 held-out questions, so the domain is fixed. It is **2,951
-Wikipedia documents — 2,210 Olympic event pages plus 740 distractors** (films, companies,
+Wikipedia documents: 2,210 Olympic event pages plus 740 distractors** (films, companies,
 politicians) that no supplied question touches. They exist to punish naive similarity
 search, and they do.
 
@@ -133,7 +135,7 @@ rather than trusting it:
 
 - **25 tennis pages stack two infoboxes.** A sport-specific box comes first, and the
   `[Infobox Olympic event]` block carrying venue, date and medallists comes second.
-  Reading only the first loses all of it — and one held-out question asks exactly that.
+  Reading only the first loses all of it, and one held-out question asks exactly that.
 - **Splitting run-together team rosters** (`Dani KingLaura TrottJoanna Rowsell`) on a
   Latin-1 character range mangles names like `Süleymanoğlu`, because those ranges contain
   lowercase letters too. The split tests `str.isupper()` per character instead.
@@ -145,12 +147,12 @@ numeric `competitors` field, and a count over them says so.
 ## Honest limits
 
 - **Tier 0 is a cache, not understanding.** Its rules match the five question shapes in
-  this benchmark. The generalisation number is GraphRAG's **97%** — that pipeline plans
+  this benchmark. The generalisation number is GraphRAG's **97%**, since that pipeline plans
   every question with the LLM and no rules. If every question were novel, OCCAM degrades
   to tier 1 and costs one planning call, not zero.
 
   This is testable, so it is tested. `scripts/paraphrase_check.py` asks the same facts in
-  wordings no rule matches — *"tally the biathlon events … where the competitor count
+  wordings no rule matches: *"tally the biathlon events … where the competitor count
   exceeded 73"*, *"whichever Summer Games came directly before Rio 2016"*. **All six fall
   through to tier 1 and all six are answered correctly**, at ~830 tokens each. The rule
   cache is an optimisation on the hot path, not the thing that makes the system work.
@@ -191,16 +193,16 @@ python scripts/load_tigergraph.py --schema --vectors --load --queries
 | Path | What it holds |
 |---|---|
 | `occam/ingest/parse.py` | infobox extraction, date normalisation, roster splitting |
-| `occam/store/local.py` | in-memory graph — the reference implementation |
+| `occam/store/local.py` | in-memory graph, the reference implementation |
 | `occam/store/tigergraph.py` | schema, loader, and the GSQL behind each agent tool |
 | `occam/store/vectors.py` | chunking + hybrid dense/BM25 retrieval |
 | `occam/agents/plan.py` | `QueryPlan`, the executor, and the rule cache |
-| `occam/agents/planner.py` | LLM planner — question to plan over the schema |
+| `occam/agents/planner.py` | LLM planner: question to plan over the schema |
 | `occam/pipelines/` | `rag`, `graphrag`, `agentic`, `router` |
 | `occam/eval/` | harness, metrics, report, dashboard |
 
 All four pipelines execute the *same* `QueryPlan` against the *same* graph. What differs is
-only who writes the plan — a rule, one LLM call, or an agent that reads the result and
+only who writes the plan: a rule, one LLM call, or an agent that reads the result and
 rewrites it. That is what makes the comparison a benchmark rather than three unrelated
 systems.
 
@@ -209,11 +211,11 @@ systems.
 Answer accuracy cannot tell a system that found the evidence from one that guessed well.
 The public questions ship `gold_doc_ids`, so every run is scored on retrieval directly:
 
-- **evidence recall** — share of the question's gold documents the pipeline actually retrieved
-- **evidence precision** — share of retrieved documents that were gold
-- **cost to correct** — tokens spent per correct answer
-- **strategy changes** — times the plan was rewritten after seeing evidence
-- **stop reason** — recorded in plain language on every run
+- **evidence recall**: share of the question's gold documents the pipeline actually retrieved
+- **evidence precision**: share of retrieved documents that were gold
+- **cost to correct**: tokens spent per correct answer
+- **strategy changes**: times the plan was rewritten after seeing evidence
+- **stop reason**: recorded in plain language on every run
 
 RAG's 63% accuracy against 76% evidence recall, with superlatives at 0.16, is the whole
 argument for reporting both.
