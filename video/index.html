@@ -1,0 +1,181 @@
+<!doctype html><html><head><meta charset="utf-8"><title>OCCAM demo</title>
+<link rel="stylesheet" href="../docs/site.css">
+<style>
+html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:var(--bg)}
+*{transition:none!important}
+#stage{position:relative;width:1920px;height:1080px;overflow:hidden}
+.scene{position:absolute;inset:0;opacity:0;pointer-events:none}
+.center{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;height:100%;padding:0 140px 80px}
+.rv{opacity:0}
+.big{font-size:88px;font-weight:800;letter-spacing:-.035em;line-height:1.05;margin:0}
+.huge{font-size:120px;font-weight:800;letter-spacing:-.04em;line-height:1}
+.amber{color:var(--c-occam)}.dim{color:var(--tx2)}
+.eyebrow{color:var(--c-occam);font:600 22px ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;margin-bottom:26px}
+.cards3{display:flex;gap:28px;margin-top:50px}
+.cards3 .card{width:520px;padding:36px;text-align:left}
+.cards3 .card .big{font-size:96px}.cards3 h3{font-size:30px;margin:6px 0 12px}.cards3 p{font-size:22px;line-height:1.4}
+.pill{display:inline-block;border:1px solid var(--bd);background:var(--s1);border-radius:999px;padding:12px 26px;font-size:30px;margin:8px}
+#cap{position:absolute;left:0;right:0;bottom:0;height:100px;background:#0c0c0bf2;display:flex;align-items:center;justify-content:center;
+ font-size:27px;line-height:1.3;color:#fff;padding:0 110px;text-align:center;z-index:30;border-top:1px solid var(--bd);letter-spacing:-.005em}
+#siteWrap{position:absolute;left:0;top:0;width:1920px;height:980px;overflow:hidden;opacity:0}
+#site{width:1600px;height:816px;border:0;transform:scale(1.2);transform-origin:0 0;background:var(--bg)}
+#cursor{position:absolute;width:34px;height:34px;z-index:40;opacity:0;filter:drop-shadow(0 3px 6px #0008)}
+#ripple{position:absolute;width:20px;height:20px;border-radius:50%;border:4px solid var(--c-occam);z-index:39;opacity:0}
+.tier{width:370px;padding:28px}.tier h3{font-size:28px;margin:8px 0}.tier p{font-size:19px}
+.tiers4{display:flex;gap:22px;margin-top:40px}
+.term{background:#0a0a09;border:1px solid var(--bd);border-radius:18px;overflow:hidden;font:20px/1.4 ui-monospace,Menlo,monospace;color:#d8d7cc}
+.term .bar2{background:#1b1b19;padding:12px 18px;display:flex;gap:9px;align-items:center;color:var(--tx3);font-size:16px}
+.term .bar2 i{width:13px;height:13px;border-radius:50%;background:#444;display:inline-block}
+.term pre{margin:0;padding:18px 24px;white-space:pre-wrap;overflow:hidden}
+.ok{color:var(--good)}.bad{color:var(--bad)}.lblue{color:#7fb0ff}
+.crit{display:flex;align-items:center;gap:26px;background:var(--s1);border:1px solid var(--bd);border-radius:18px;padding:20px 30px;margin:9px 0;width:1280px;text-align:left}
+.crit .ck{width:46px;height:46px;border-radius:50%;background:var(--c-occam);color:#111;font-weight:900;font-size:26px;display:flex;align-items:center;justify-content:center;flex:none}
+.crit b{font-size:30px;display:block}.crit span{font-size:22px;color:var(--tx2)}
+.crit .num{margin-left:auto;font-size:38px;font-weight:750;color:var(--c-occam)}
+#prog{position:absolute;left:0;bottom:100px;height:4px;background:var(--c-occam);z-index:31}
+.brandbig{display:flex;align-items:center;gap:36px;font-weight:800;letter-spacing:.18em;font-size:132px}
+.brandbig img{width:170px;height:170px}
+</style></head><body><div id="stage">
+<div id="siteWrap"><iframe id="site" src="../docs/index.html"></iframe></div>
+
+<div class="scene" id="pain"><div class="center">
+ <div class="rv big" data-cue="0">Everyone is adding <span class="amber">agents</span>.</div>
+ <div class="rv big dim" data-cue="1" style="margin-top:26px">An agent is not free.</div>
+ <div class="rv" data-cue="2" style="margin-top:44px"><span class="pill">model calls</span><span class="pill">tokens</span><span class="pill">latency</span><span class="pill">cost</span></div>
+ <div class="rv big amber" data-cue="3" style="margin-top:50px;font-size:64px">Is the extra reasoning worth it?</div>
+</div></div>
+
+<div class="scene" id="problem"><div class="center">
+ <div class="rv eyebrow" data-cue="0">Same 100 questions · three standard approaches</div>
+ <div class="cards3">
+  <div class="rv card" data-cue="1"><div class="big mono" style="color:var(--c-rag)"><span data-count="63" data-cue="1" data-suf="%">0</span></div><h3>RAG</h3><p>Counting questions: <b class="bad">10%</b>. Evidence spans up to 43 documents; top-10 can't hold it.</p></div>
+  <div class="rv card" data-cue="2"><div class="big mono" style="color:var(--c-graphrag)"><span data-count="97" data-cue="2" data-suf="%">0</span></div><h3>GraphRAG</h3><p>Graph returns a shortlist, single pass <b class="bad">gives up</b>. 3 of 100 lost.</p></div>
+  <div class="rv card" data-cue="3"><div class="big mono" style="color:var(--c-agentic)"><span data-count="890" data-cue="3" data-suf="">0</span></div><h3>Agentic: tokens / question</h3><p>100% accurate, but pays on <b class="bad">every</b> question, including the 97 that didn't need it.</p></div>
+ </div>
+</div></div>
+
+<div class="scene" id="solution">
+ <div class="center" id="solA" style="position:absolute;inset:0">
+  <div class="rv" data-cue="0"><div class="brandbig"><img src="../docs/logo.svg">OCCAM</div></div>
+  <div class="rv big dim" data-cue="1" style="font-size:44px;margin-top:50px;max-width:1300px;font-weight:600;letter-spacing:-.02em">“Entities should not be multiplied beyond necessity,”<br><span class="amber">and neither should retrieval steps.</span></div>
+  <div class="rv" data-cue="2" style="font-size:38px;margin-top:40px;color:var(--tx2)">A controller that routes each question to the <b style="color:#fff">cheapest tier that can answer it</b></div>
+ </div>
+ <div class="center" id="solB" style="position:absolute;inset:0;opacity:0">
+  <div class="eyebrow">The router</div>
+  <div class="tiers4">
+   <div class="rv card tier" id="t0"><div class="mono amber">TIER 0 · 0 tok</div><h3>Rule → graph query</h3><p>No LLM call. Known question shape becomes a plan directly.</p></div>
+   <div class="rv card tier" id="t1"><div class="mono amber">TIER 1 · ~260 tok</div><h3>One planning call</h3><p>Shortlist from the graph? One cheap call applies the question's constraint.</p></div>
+   <div class="rv card tier" id="t2"><div class="mono amber">TIER 2 · agent loop</div><h3>Re-plan on complaint</h3><p>The executor says what's missing; the agent plans again.</p></div>
+   <div class="rv card tier" id="t3"><div class="mono amber">TIER 3 · documents</div><h3>Hybrid vector + BM25</h3><p>Graph exhausted: retrieve, then read.</p></div>
+  </div>
+  <div class="rv" id="solNote" style="font-size:34px;margin-top:46px;color:var(--tx2)">Escalate only when a tier can <b class="amber">name what it was missing</b>, recorded in the trace.</div>
+ </div>
+</div>
+
+<div class="scene" id="graph">
+ <div style="position:absolute;left:90px;top:70px;width:860px">
+  <div class="rv eyebrow" data-cue="0">TigerGraph schema</div>
+  <svg viewBox="0 0 860 560" width="860" height="560" id="schema"></svg>
+  <div class="rv mono dim" data-cue="0" style="font-size:20px;line-height:1.5;margin-top:6px">Event 2,187 · Athlete 6,039 · Venue 325 · Sport 42 · NOC 133 · Games 21</div>
+ </div>
+ <div style="position:absolute;left:1000px;top:70px;width:830px">
+  <div class="rv eyebrow" data-cue="1">Agent tools = installed GSQL queries</div>
+  <div class="rv term" data-cue="1"><div class="bar2"><i></i><i></i><i></i><span style="margin-left:10px">TigerGraph Savanna · 4.2.5</span></div><pre><span class="lblue">field_of_event</span>   <span class="lblue">count_above</span>   <span class="lblue">argmax_competitors</span>
+<span class="lblue">event_at_venue_date</span>   <span class="lblue">prev_edition</span>   <span class="lblue">vector_search</span>
+
+Chunk.emb  VECTOR(384)  ──SOURCED_FROM──▶  Event</pre></div>
+  <div class="rv term" data-cue="2" style="margin-top:26px"><div class="bar2"><i></i><i></i><i></i><span style="margin-left:10px">recorded verification run · scripts/verify_tigergraph.py</span></div><pre id="parity"></pre></div>
+ </div>
+</div>
+
+<div class="scene" id="terminal">
+ <div style="position:absolute;left:150px;top:36px;width:1620px">
+  <div class="term"><div class="bar2"><i></i><i></i><i></i><span style="margin-left:10px">$ python scripts/demo.py pub-055 · fresh run against the real code</span></div><pre id="termout" style="height:880px;font-size:21px"></pre></div>
+ </div>
+</div>
+
+<div class="scene" id="criteria"><div class="center" style="justify-content:flex-start;padding-top:60px">
+ <div class="rv eyebrow" data-cue="0" style="margin-bottom:14px">How OCCAM meets the criteria</div>
+ <div class="rv crit" data-cue="1"><div class="ck">✓</div><div><b>Accuracy</b><span>All 100 public questions · 50/50 held-out answered</span></div><div class="num mono">100%</div></div>
+ <div class="rv crit" data-cue="2"><div class="ck">✓</div><div><b>Token efficiency</b><span>Agent: 890 tokens per question</span></div><div class="num mono">64 tok</div></div>
+ <div class="rv crit" data-cue="3"><div class="ck">✓</div><div><b>Completeness</b><span>Evidence recall reported next to accuracy</span></div><div class="num mono">99.5%</div></div>
+ <div class="rv crit" data-cue="4"><div class="ck">✓</div><div><b>TigerGraph depth</b><span>Traversals + GSQL aggregation + vectors, parity-checked</span></div><div class="num mono">78 / 78</div></div>
+ <div class="rv crit" data-cue="5"><div class="ck">✓</div><div><b>Honesty</b><span>Tier 0 is a cache · 6/6 paraphrases still correct via tier 1</span></div><div class="num mono">6 / 6</div></div>
+ <div class="rv crit" data-cue="6"><div class="ck">✓</div><div><b>Reproducible</b><span>Raw run files for every number in the repository</span></div><div class="num mono">open</div></div>
+</div></div>
+
+<div class="scene" id="outro"><div class="center" style="padding-bottom:0">
+ <div class="rv" data-cue="0"><div class="brandbig"><img src="../docs/logo.svg" alt="">OCCAM</div></div>
+ <div class="rv dim" data-at="1.2" style="font-size:40px;margin-top:44px">Know which questions need an agent.</div>
+ <div class="rv mono dim" data-at="2.2" style="font-size:24px;margin-top:22px;color:var(--tx3)">tushartechs.github.io/occam-graphrag</div>
+</div></div>
+
+<div id="prog"></div><div id="cap"></div>
+<svg id="cursor" viewBox="0 0 24 24"><path d="M3 2l7 19 2.6-7.4L20 11z" fill="#fff" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/></svg><div id="ripple"></div>
+</div>
+<script src="../docs/data.js"></script><script src="demo_lines.js"></script>
+<script>
+const $=id=>document.getElementById(id),clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x)),ease=x=>1-Math.pow(1-x,3);
+let TL,site,sdoc,swin;
+const SCHEMA=[["Games",110,60],["Event",430,60],["Venue",750,60],["Sport",750,200],["Athlete",430,260],["NOC",110,260],["Chunk",110,470]];
+const EDGES=[[0,1,"HAS_EVENT"],[1,2,"AT_VENUE"],[1,3,"IN_SPORT"],[1,4,"WON_GOLD/SILVER/BRONZE"],[4,5,"REPRESENTS"],[6,1,"SOURCED_FROM"]];
+(function(){let s="";EDGES.forEach(([a,b,l])=>{const A=SCHEMA[a],B=SCHEMA[b];s+=`<line x1="${A[1]}" y1="${A[2]}" x2="${B[1]}" y2="${B[2]}" stroke="var(--bd)" stroke-width="3"/><text x="${(A[1]+B[1])/2}" y="${(A[2]+B[2])/2-10}" text-anchor="middle" fill="var(--tx3)" font-size="15" class="mono">${l}</text>`});
+ SCHEMA.forEach(([n,x,y],i)=>{const c=n=="Event"?"var(--c-occam)":n=="Chunk"?"var(--c-rag)":"var(--c-agentic)";s+=`<g><circle cx="${x}" cy="${y}" r="46" fill="var(--s1)" stroke="${c}" stroke-width="4"/><text x="${x}" y="${y+6}" text-anchor="middle" fill="#fff" font-size="19" font-weight="650">${n}</text></g>`});
+ $("schema").innerHTML=s})();
+const PARITY=[["$ python scripts/verify_tigergraph.py",""],["checked 78, mismatched 0, skipped 22 (no GSQL route yet)",""],["PASS: TigerGraph reproduces the reference results","ok"]];
+function cueOf(sc,i){return sc.sentences[Math.min(i,sc.sentences.length-1)].start-sc.start}
+function reveal(root,lt,sc){
+ root.querySelectorAll(".rv").forEach(el=>{let t0=el.dataset.cue!=null?cueOf(sc,+el.dataset.cue)+(+el.dataset.d||0):+el.dataset.at;const p=ease(clamp((lt-t0)/.55));el.style.opacity=p;el.style.transform=`translateY(${(1-p)*22}px)`});
+ root.querySelectorAll("[data-count]").forEach(el=>{const t0=cueOf(sc,+el.dataset.cue);const p=ease(clamp((lt-t0)/1.4));el.textContent=Math.round(+el.dataset.count*p).toLocaleString()+(el.dataset.suf||"")});
+}
+function iframeSetup(){const css=sdoc.createElement("style");css.textContent="*{transition:none!important;scroll-behavior:auto!important}nav{position:static!important}";sdoc.head.appendChild(css)}
+function ease2(x){return x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2}
+// keyframed scroll: [[time,y],...]
+function kf(lt,k){if(lt<=k[0][0])return k[0][1];for(let i=1;i<k.length;i++)if(lt<=k[i][0]){const p=ease2((lt-k[i-1][0])/(k[i][0]-k[i-1][0]));return k[i-1][1]+(k[i][1]-k[i-1][1])*p}return k[k.length-1][1]}
+function cursorTo(x,y,op){const c=$("cursor");c.style.opacity=op;c.style.left=x+"px";c.style.top=y+"px"}
+function elCenter(id){const r=sdoc.getElementById(id).getBoundingClientRect();return[(r.left+r.width/2)*1.2,(r.top+r.height/2)*1.2]}
+function liveScene(sc,lt,cfg){
+ $("siteWrap").style.opacity=1;
+ const top=sdoc.getElementById("chips").getBoundingClientRect().top+swin.scrollY;swin.scrollTo(0,top-14);
+ const lanes=[...sdoc.querySelectorAll(".lane")];
+ const total=swin.__setRace(cfg.q,0);
+ const runAt=cueOf(sc,cfg.runCue)+0.6, endAt=cueOf(sc,cfg.finishCue)+2;
+ const rate=Math.min(1,total/1000/(endAt-runAt));
+ const rt=Math.max(0,(lt-runAt)*1000*rate);swin.__setRace(cfg.q,rt);
+ // lane focus follows the sentence being spoken
+ let cur=-1;sc.sentences.forEach((s,i)=>{if(lt>=s.start-sc.start)cur=i});const f=cfg.focus[cur];
+ lanes.forEach((l,i)=>{l.style.opacity=f&&!f.includes(i)?.35:1});
+ // cursor: glide to Run, click at runCue
+ const [bx,by]=elCenter("run");const t0=cueOf(sc,cfg.runCue-1)+0.5;
+ const p=ease(clamp((lt-t0)/(runAt-0.3-t0)));const sx=1400,sy=330;
+ cursorTo(sx+(bx-sx)*p,sy+(by-sy)*p,lt>t0-.4&&lt<runAt+2.5?1:0);
+ const rp=clamp((lt-runAt+0.3)/0.7);$("ripple").style.opacity=rp>0&&rp<1?1-rp:0;$("ripple").style.left=bx-10+"px";$("ripple").style.top=by-10+"px";$("ripple").style.transform=`scale(${1+rp*3})`;
+ const nm=sdoc.getElementById("qtext");
+}
+const LIVE={live1:{q:0,scroll:70,runCue:2,finishCue:4,focus:{2:[0],3:[1,2],4:[3]}},
+ live2:{q:1,scroll:70,runCue:1,finishCue:4,focus:{2:[1],3:[2],4:[3]}},
+ live3:{q:2,scroll:70,runCue:1,finishCue:2,focus:{1:[1,2],2:[3]}}};
+function seek(t){
+ const sc=TL.scenes.find(s=>t>=s.start&&t<s.end)||TL.scenes[TL.scenes.length-1];const lt=t-sc.start,dur=sc.end-sc.start;
+ document.querySelectorAll(".scene").forEach(e=>e.style.opacity=0);$("siteWrap").style.opacity=0;cursorTo(0,0,0);$("ripple").style.opacity=0;
+ const fade=Math.min(clamp(lt/.4),clamp((dur-lt)/.4));const el=$(sc.id);
+ if(el){el.style.opacity=sc.id==="outro"?clamp(lt/.4):fade;reveal(el,lt,sc)}
+ if(LIVE[sc.id]){liveScene(sc,lt,LIVE[sc.id]);$("siteWrap").style.opacity=fade}
+ if(sc.id==="solution"){const sw=clamp((lt-cueOf(sc,3)+.2)/.5);$("solA").style.opacity=1-sw;$("solB").style.opacity=sw;
+  const sB=sc.sentences[3],L=sB.end-sB.start,b=cueOf(sc,3);[["t0",.5],["t1",L*.3],["t2",L*.55],["t3",L*.78]].forEach(([id,d])=>{const p=ease(clamp((lt-b-d)/.55));$(id).style.opacity=p;$(id).style.transform=`translateY(${(1-p)*22}px)`});
+  const pn=ease(clamp((lt-cueOf(sc,4))/.55));$("solNote").style.opacity=pn;$("solNote").style.transform=`translateY(${(1-pn)*22}px)`}
+ if(sc.id==="graph"){const c=cueOf(sc,2)+.5,per=1.1;$("parity").innerHTML=PARITY.map(([s,k],i)=>lt>=c+i*per?`<div class="${k}">${s.slice(0,Math.floor((lt-c-i*per)*60)+1)}</div>`:"").join("")}
+ if(sc.id==="terminal"){const L=window.DEMO_LINES,c=cueOf(sc,0)+2.2,span=dur-c-3.5;const n=Math.floor(clamp((lt-c)/span)*L.length);
+  const vis=L.slice(0,n).map(s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/(CORRECT)/,'<span class="ok">$1</span>').replace(/(WRONG)/,'<span class="bad">$1</span>').replace(/^(###.*)$/,'<b class="amber">$1</b>'));
+  const pre=$("termout");pre.innerHTML=vis.join("\n");pre.scrollTop=pre.scrollHeight}
+ if(sc.id==="results"){swin.__setRace(0,0);const tr=sdoc.getElementById("tradeoff").offsetTop,mx=sdoc.getElementById("matrix").getBoundingClientRect().top+swin.scrollY,rt=sdoc.getElementById("router").offsetTop;
+  const c1=cueOf(sc,1),c2=cueOf(sc,2),c3=cueOf(sc,3);$("siteWrap").style.opacity=fade;
+  swin.scrollTo(0,kf(lt,[[0,tr+20],[c1+3,tr+20],[c2-.4,tr+20],[c2+.7,mx-130],[c3-.4,mx-130],[c3+.7,rt+10]]))}
+ const s=sc.sentences.find(x=>t>=x.start-.05&&t<=x.end+.15);$("cap").textContent=s&&sc.id!=="outro"?s.text:"";$("cap").style.display=sc.id==="outro"?"none":"flex";
+ $("prog").style.width=sc.id==="outro"?"0px":t/TL.total*1920+"px";
+}
+window.seek=seek;
+(async()=>{TL=await (await fetch("timeline.json")).json();site=$("site");
+ await new Promise(r=>{if(site.contentDocument&&site.contentDocument.readyState==="complete"&&site.contentWindow.__setRace)r();else site.onload=r});
+ swin=site.contentWindow;sdoc=site.contentDocument;iframeSetup();seek(0);window.ready=true})();
+</script></body></html>

@@ -8,3 +8,4 @@ artifacts/index/
 artifacts/*.partial
 artifacts/*.log
 .DS_Store
+video/build/

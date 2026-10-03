@@ -1,0 +1,302 @@
+{
+ "total": 291.129,
+ "scenes": [
+  {
+   "id": "pain",
+   "start": 0.0,
+   "end": 18.564,
+   "sentences": [
+    {
+     "text": "Every team in this hackathon is bolting an agent onto retrieval.",
+     "start": 0.4,
+     "end": 3.882
+    },
+    {
+     "text": "But an agent is not free.",
+     "start": 4.132,
+     "end": 5.633
+    },
+    {
+     "text": "Every extra step is another model call, more tokens, more latency, and a bigger bill.",
+     "start": 5.883,
+     "end": 11.443
+    },
+    {
+     "text": "So the real question is not whether agentic is better, but whether the extra reasoning is worth its cost.",
+     "start": 11.693,
+     "end": 17.764
+    }
+   ]
+  },
+  {
+   "id": "problem",
+   "start": 18.564,
+   "end": 49.162,
+   "sentences": [
+    {
+     "text": "We tested three standard approaches on the same hundred Olympic questions.",
+     "start": 18.964,
+     "end": 22.932
+    },
+    {
+     "text": "Plain RAG manages sixty three percent, and just ten on counting questions, because the evidence spans up to forty three documents that a top ten retrieval can never hold.",
+     "start": 23.182,
+     "end": 33.057
+    },
+    {
+     "text": "GraphRAG fixes that, but when the graph returns a shortlist instead of an answer, it simply gives up.",
+     "start": 33.307,
+     "end": 39.046
+    },
+    {
+     "text": "The agent fixes that too, reaching a hundred percent, but it pays almost nine hundred tokens on every question, including the ninety seven that never needed it.",
+     "start": 39.296,
+     "end": 48.362
+    }
+   ]
+  },
+  {
+   "id": "solution",
+   "start": 49.162,
+   "end": 79.151,
+   "sentences": [
+    {
+     "text": "This is OCCAM.",
+     "start": 49.562,
+     "end": 50.397
+    },
+    {
+     "text": "Named for Occam's razor: entities should not be multiplied beyond necessity, and neither should retrieval steps.",
+     "start": 50.647,
+     "end": 56.986
+    },
+    {
+     "text": "OCCAM is a controller that sends each question to the cheapest tier that can actually answer it.",
+     "start": 57.236,
+     "end": 61.879
+    },
+    {
+     "text": "Tier zero maps the question to a graph query with no language model. Tier one makes one planning call. Tier two is the full agent loop. Tier three falls back to documents.",
+     "start": 62.129,
+     "end": 72.599
+    },
+    {
+     "text": "A tier only hands over when it can name what it was missing, so evidence is never silently skipped.",
+     "start": 72.849,
+     "end": 78.351
+    }
+   ]
+  },
+  {
+   "id": "graph",
+   "start": 79.151,
+   "end": 104.409,
+   "sentences": [
+    {
+     "text": "Underneath is TigerGraph: over two thousand events, six thousand athletes, venues, sports and countries, as a graph.",
+     "start": 79.551,
+     "end": 87.062
+    },
+    {
+     "text": "Every agent tool is an installed GSQL query on a TigerGraph Savanna workspace, with embeddings stored beside the data as a vector attribute.",
+     "start": 87.312,
+     "end": 95.787
+    },
+    {
+     "text": "We run the same questions through the database and our reference implementation.",
+     "start": 96.037,
+     "end": 100.075
+    },
+    {
+     "text": "Seventy eight questions checked. Zero mismatches.",
+     "start": 100.325,
+     "end": 103.609
+    }
+   ]
+  },
+  {
+   "id": "live1",
+   "start": 104.409,
+   "end": 140.146,
+   "sentences": [
+    {
+     "text": "Now let's run it live. This is the real prototype, replaying recorded benchmark traces.",
+     "start": 104.809,
+     "end": 110.31
+    },
+    {
+     "text": "First, a counting question: how many biathlon events at the twenty eighteen Winter Olympics had more than seventy three competitors?",
+     "start": 110.56,
+     "end": 118.07
+    },
+    {
+     "text": "I press run. RAG retrieves ten chunks and pays almost four thousand tokens, but the answer needs eleven documents, so it fails.",
+     "start": 118.32,
+     "end": 125.855
+    },
+    {
+     "text": "GraphRAG and the agent plan with the language model, spend eight hundred thirty seven tokens, and count inside the database. Correct: five.",
+     "start": 126.105,
+     "end": 134.441
+    },
+    {
+     "text": "OCCAM recognises the shape of the question and answers five, with zero tokens.",
+     "start": 134.691,
+     "end": 139.346
+    }
+   ]
+  },
+  {
+   "id": "live2",
+   "start": 140.146,
+   "end": 170.148,
+   "sentences": [
+    {
+     "text": "Now a harder one. Who won gold in the men's eighty kilogram taekwondo at the Games held just before twenty sixteen?",
+     "start": 140.546,
+     "end": 147.198
+    },
+    {
+     "text": "The graph follows the previous edition edge to London twenty twelve, but finds three candidate events.",
+     "start": 147.448,
+     "end": 153.121
+    },
+    {
+     "text": "GraphRAG stops there. It found the neighbourhood but cannot choose.",
+     "start": 153.371,
+     "end": 157.171
+    },
+    {
+     "text": "The agent resolves it with a second model call, and gets Sebasti\u00e1n Crismanich.",
+     "start": 157.421,
+     "end": 162.11
+    },
+    {
+     "text": "OCCAM reaches the same answer, but skips the replanning: roughly two hundred sixty tokens instead of eleven hundred.",
+     "start": 162.36,
+     "end": 169.348
+    }
+   ]
+  },
+  {
+   "id": "live3",
+   "start": 170.148,
+   "end": 188.528,
+   "sentences": [
+    {
+     "text": "One more: the nordic combined gold before the twenty fourteen Winter Games.",
+     "start": 170.548,
+     "end": 175.109
+    },
+    {
+     "text": "Single pass GraphRAG fails here, and the agent earns its cost by re-planning when the graph reports insufficient evidence.",
+     "start": 175.359,
+     "end": 182.184
+    },
+    {
+     "text": "OCCAM's rules handle this shape directly. Jason Lamy Chappuis, zero tokens.",
+     "start": 182.434,
+     "end": 187.728
+    }
+   ]
+  },
+  {
+   "id": "terminal",
+   "start": 188.528,
+   "end": 207.376,
+   "sentences": [
+    {
+     "text": "This is not just a front end. Here is the same taekwondo question, run fresh from the command line against the real code.",
+     "start": 188.928,
+     "end": 195.901
+    },
+    {
+     "text": "RAG is wrong at nearly four thousand tokens. GraphRAG is stuck on the ambiguity. The agent is correct at eleven hundred. And OCCAM is correct at two hundred sixty seven.",
+     "start": 196.151,
+     "end": 206.576
+    }
+   ]
+  },
+  {
+   "id": "results",
+   "start": 207.376,
+   "end": 240.905,
+   "sentences": [
+    {
+     "text": "Across all hundred questions, here is the tradeoff.",
+     "start": 207.776,
+     "end": 210.759
+    },
+    {
+     "text": "RAG is worst on both axes: sixty three percent at over three thousand tokens. The agent reaches a hundred percent at eight hundred ninety. OCCAM matches it at sixty four tokens, fourteen times cheaper.",
+     "start": 211.009,
+     "end": 223.083
+    },
+    {
+     "text": "By question type, RAG collapses on aggregation and superlatives, while the graph methods hold.",
+     "start": 223.333,
+     "end": 228.754
+    },
+    {
+     "text": "Ninety eight questions never touched a language model. The agent changed the answer on three questions and broke none. Agents are decisive on three percent of questions, and overhead on the rest.",
+     "start": 229.004,
+     "end": 240.105
+    }
+   ]
+  },
+  {
+   "id": "criteria",
+   "start": 240.905,
+   "end": 283.88,
+   "sentences": [
+    {
+     "text": "Here is how this maps to what judges care about.",
+     "start": 241.305,
+     "end": 243.951
+    },
+    {
+     "text": "Accuracy: a hundred percent on the public set, with answers for all fifty held-out questions.",
+     "start": 244.201,
+     "end": 249.738
+    },
+    {
+     "text": "Token efficiency: sixty four tokens per question, against eight hundred ninety for the agent.",
+     "start": 249.988,
+     "end": 255.834
+    },
+    {
+     "text": "Completeness: we report evidence recall separately, so an answer without its evidence cannot pass as success.",
+     "start": 256.084,
+     "end": 262.87
+    },
+    {
+     "text": "TigerGraph usage: traversals, GSQL aggregation and vector search in one database, verified against the reference.",
+     "start": 263.12,
+     "end": 270.786
+    },
+    {
+     "text": "And honesty: tier zero is a cache, and on paraphrased questions it falls to tier one, which still answered all six correctly.",
+     "start": 271.036,
+     "end": 278.837
+    },
+    {
+     "text": "Every number is reproducible from the raw run files in the repository.",
+     "start": 279.087,
+     "end": 283.08
+    }
+   ]
+  },
+  {
+   "id": "outro",
+   "start": 283.88,
+   "end": 291.129,
+   "sentences": [
+    {
+     "text": "OCCAM. Know which questions need an agent.",
+     "start": 284.28,
+     "end": 286.829
+    }
+   ]
+  }
+ ]
+}
